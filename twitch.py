@@ -92,7 +92,7 @@ async def setup_twitch_listener():
         # Resubs
         await eventsub.listen_channel_subscription_message(user.id, callback_resubscriber)
     if AuthScope.CHANNEL_READ_REDEMPTIONS in target_scope:
-        await eventsub.listen_channel_points(user.id, callback_channelpoints)
+        await eventsub.listen_channel_points_custom_reward_redemption_add(user.id, callback_channelpoints)
 
     running = True
     while running:
