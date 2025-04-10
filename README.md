@@ -1,4 +1,4 @@
-# Twitch MediaShare Python  
+# Twitch Subathon Timer in Python  
 
 ## Getting Started  
 ### Python  
