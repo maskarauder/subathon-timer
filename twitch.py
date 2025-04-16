@@ -37,14 +37,15 @@ async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEve
 def add_sub_time(tier: str) -> None:
     global obs_thread
 
-    if tier == '1000':
-        obs_thread.add_time(TIER_1_VALUE)
-    elif tier == '2000':
-        obs_thread.add_time(TIER_2_VALUE)
-    elif tier == '3000':
-        obs_thread.add_time(TIER_3_VALUE)
-    else:
-        raise Exception('Twitch added some new kind of sub?')
+    match tier:
+        case '1000':
+            obs_thread.add_time(TIER_1_VALUE)
+        case '2000':
+            obs_thread.add_time(TIER_2_VALUE)
+        case '3000':
+            obs_thread.add_time(TIER_3_VALUE)
+        case _:
+            raise Exception('Twitch added some new kind of sub?')
 
 
 # This includes those new subs from Gift Subs
@@ -98,30 +99,31 @@ async def setup_twitch_listener():
     while running:
         try:
             user_input = input('Enter time or seconds to adjust time (p=pause, r=resume, q=quit, s=set exact):')
-            if user_input == 'p':
-                OBSThread.pause = True
-            elif user_input == 'r':
-                if not obs_thread.is_alive():
-                    obs_thread = OBSThread()
-                    obs_thread.start()
-                OBSThread.pause = False
-            elif user_input == 'q':
-                obs_thread.ready_to_die = True
-                obs_thread.join()
-                running = False
-            elif user_input == 's':
-                user_input = input('Input new value (exact seconds or HH:MM:ss, anything else cancels):')
-                try:
-                    new_time = fuzzy_strtime_to_int(user_input)
-                    obs_thread.set_time(new_time)
-                except ValueError:
-                    print('Input not recognized.')
-            else:
-                try:
-                    time_to_add = fuzzy_strtime_to_int(user_input)
-                    obs_thread.add_time(time_to_add)
-                except ValueError:
-                    print('Input not recognized.')
+            match user_input:
+                case 'p':
+                    obs_thread.pause = True
+                case 'r':
+                    if not obs_thread.is_alive():
+                        obs_thread = OBSThread()
+                        obs_thread.start()
+                    obs_thread.pause = False
+                case 'q':
+                    obs_thread.ready_to_die = True
+                    obs_thread.join()
+                    running = False
+                case 's':
+                    user_input = input('Input new value (exact seconds or HH:MM:ss, anything else cancels):')
+                    try:
+                        new_time = fuzzy_strtime_to_int(user_input)
+                        obs_thread.set_time(new_time)
+                    except ValueError:
+                        print('Input not recognized.')
+                case _:
+                    try:
+                        time_to_add = fuzzy_strtime_to_int(user_input)
+                        obs_thread.add_time(time_to_add)
+                    except ValueError:
+                        print('Input not recognized.')
         except EOFError:
             print('Dying...')
             break

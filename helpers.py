@@ -6,35 +6,32 @@ def fuzzy_strtime_to_int(input: str) -> int:
     try:
         return int(input)
     except ValueError:
-        nparam = input.count(':')
-
         negate = False
         if input.startswith('-'):
             negate = True
             input = input.lstrip('-')
 
-        t = 0
-        if nparam == 1 or nparam == 2:
-            time_vals = input.split(':')
-            time_vals.reverse()
+        nparam = input.count(':')
+        if nparam > 2:
+            return 0
 
-            seconds = 0
-            try:
-                seconds += int(time_vals[0])
-                if nparam >= 1:
-                    seconds += int(time_vals[1]) * 60
-                if nparam >= 2:
-                    seconds += int(time_vals[2]) * 60 * 60
+        time_vals = input.split(':')
+        time_vals.reverse()
 
-                t = seconds
-            except ValueError:
-                pass
+        seconds = 0
+        try:
+            seconds += int(time_vals[0])
+            if nparam >= 1:
+                seconds += int(time_vals[1]) * 60
+            if nparam >= 2:
+                seconds += int(time_vals[2]) * 60 * 60
+        except ValueError:
+            return 0
+    
+        if negate:
+            seconds *= -1
         
-            if t != 0:
-                return t if not negate else t*-1
-        
-        #TODO: Maybe add support for stuff like "60m"?
-        return 0
+        return seconds
 
 def int_to_strtime(input: int) -> str:
     if (input < 0):
