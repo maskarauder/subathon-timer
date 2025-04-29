@@ -7,7 +7,9 @@ import obsws_python as obs
 from config import *
 from time import sleep
 from helpers import fuzzy_strtime_to_int, int_to_strtime
-from threading import Thread
+from threading import Thread, Lock
+from pprint import pprint
+from obsws_python.events import SceneItemEnableStateChangedDataclass
 
 # Can't figure out how to completely remove the need for globals for the event client
 source = None
@@ -16,35 +18,42 @@ def on_scene_item_enable_state_changed(data):
     global source
 
     if data['sceneItemId'] == source['sceneItemId']:
-        if data['sceneItemEnabled']:
-            OBSThread.pause = False
-        else:
-            OBSThread.pause = True
+        with OBSThread.lock:
+            if data['sceneItemEnabled']:
+                OBSThread.pause = False
+            else:
+                OBSThread.pause = True
 
 class OBSThread(Thread):
+    lock = Lock()
     pause = False
     ready_to_die = False
 
     def run(self) -> None:
-        while not self.connect_to_obs():
-            print('Failed to connect to OBS. Retrying in 1 sec...')
-            sleep(1)
-            return
+        with OBSThread.lock:
+            while not self.connect_to_obs():
+                print('Failed to connect to OBS. Retrying in 1 sec...')
+                sleep(1)
+                return
         
-        self.ecl.callback.register(on_scene_item_enable_state_changed)
+            self.ecl.callback.register(on_scene_item_enable_state_changed)
 
-        current = self.get_time()
-        if current == 0:
-            self.remaining_time = DEFAULT_START_TIME
-        else:
-            self.remaining_time = current
+            try:
+                current = self.get_time()
+                self.remaining_time = current
+            except Exception:
+                print('Failed to read current time, either this is the first time running or the time was invalid.')
+                settings = self.cl.get_input_settings(self.inputobj['inputName'])
+                pprint(settings.input_settings)
+                print('Ignore this if nothing broke. Resetting to default time.')
+                self.remaining_time = DEFAULT_START_TIME
 
-        self.set_time(self.remaining_time)
+            self.set_time(self.remaining_time)
 
-        while self.remaining_time > 0:
+        while self.get_time() > 0:
             if self.ready_to_die:
                 return
-            elif not self.pause:
+            elif not self.pause: # No lock needed because GIL synchronizes
                 self.update_time(-1)
             sleep(1)
         
@@ -52,11 +61,12 @@ class OBSThread(Thread):
 
 
     def __init__(self):
-        self.cl = None
-        self.ecl = None
-        self.inputobj = None
-        self.remaining_time = 1
-        self.waiting_to_be_added = 0
+        with OBSThread.lock:
+            self.cl = None
+            self.ecl = None
+            self.inputobj = None
+            self.remaining_time = 1
+            self.waiting_to_be_added = 0
         Thread.__init__(self)
 
     def __del__(self):
@@ -77,26 +87,29 @@ class OBSThread(Thread):
         if not self.cl:
             raise Exception('OBS WebSocket not connected!')
         
-        settings = self.cl.get_input_settings(self.inputobj['inputName'])
-        self.remaining_time = fuzzy_strtime_to_int(settings.input_settings['text'])
-        return self.remaining_time
+        with OBSThread.lock:
+            settings = self.cl.get_input_settings(self.inputobj['inputName'])
+            self.remaining_time = fuzzy_strtime_to_int(settings.input_settings['text'])
+            return self.remaining_time
 
 
     def set_time(self, seconds: int) -> None:
         if not self.cl:
             raise Exception('OBS WebSocket not connected!')
-        
-        settings = self.cl.get_input_settings(self.inputobj['inputName'])
-        settings.input_settings['text'] = int_to_strtime(seconds)
-        self.cl.set_input_settings(self.inputobj['inputName'], settings.input_settings, True)
+
+        with OBSThread.lock:        
+            settings = self.cl.get_input_settings(self.inputobj['inputName'])
+            settings.input_settings['text'] = int_to_strtime(seconds)
+            self.cl.set_input_settings(self.inputobj['inputName'], settings.input_settings, True)
 
 
     def update_time(self, change: int) -> None:
-        try:
-            self.get_time()
-            self.set_time(self.remaining_time + change)
-        except ValueError:
-            OBSThread.pause = True
+        with OBSThread.lock:
+            try:
+                self.get_time()
+                self.set_time(self.remaining_time + change)
+            except ValueError:
+                OBSThread.pause = True
 
     def add_time(self, seconds: int) -> None:
         self.update_time(seconds)
