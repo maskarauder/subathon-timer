@@ -23,7 +23,7 @@ async def callback_bits(data: ChannelCheerEvent) -> None:
 
     nbits = data.event.bits
     if nbits >= TRIGGER_BITS_VALUE:
-        obs_thread.add_time(nbits * BITS_VALUE)
+        obs_thread.update_time(nbits * BITS_VALUE)
 
 async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEvent) -> None:
     global obs_thread
@@ -32,18 +32,18 @@ async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEve
     if reward.lower() != CHANELLPOINTS_REWARD_NAME.lower():
         return
     
-    obs_thread.add_time(CHANNELPOINTS_REWARD_VALUE)
+    obs_thread.update_time(CHANNELPOINTS_REWARD_VALUE)
 
 def add_sub_time(tier: str) -> None:
     global obs_thread
 
     match tier:
         case '1000':
-            obs_thread.add_time(TIER_1_VALUE)
+            obs_thread.update_time(TIER_1_VALUE)
         case '2000':
-            obs_thread.add_time(TIER_2_VALUE)
+            obs_thread.update_time(TIER_2_VALUE)
         case '3000':
-            obs_thread.add_time(TIER_3_VALUE)
+            obs_thread.update_time(TIER_3_VALUE)
         case _:
             raise Exception('Twitch added some new kind of sub?')
 
@@ -121,7 +121,7 @@ async def setup_twitch_listener():
                 case _:
                     try:
                         time_to_add = fuzzy_strtime_to_int(user_input)
-                        obs_thread.add_time(time_to_add)
+                        obs_thread.update_time(time_to_add)
                     except ValueError:
                         print('Input not recognized.')
         except EOFError:

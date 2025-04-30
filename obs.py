@@ -17,11 +17,10 @@ def on_scene_item_enable_state_changed(data):
     global source
 
     if data['sceneItemId'] == source['sceneItemId']:
-        with OBSThread.lock:
-            if data['sceneItemEnabled']:
-                OBSThread.pause = False
-            else:
-                OBSThread.pause = True
+        if data['sceneItemEnabled']:
+            OBSThread.pause = False
+        else:
+            OBSThread.pause = True
 
 class OBSThread(Thread):
     lock = Lock()
@@ -103,15 +102,17 @@ class OBSThread(Thread):
 
 
     def update_time(self, change: int) -> None:
+        if not self.cl:
+            raise Exception('OBS WebSocket not connected!')
+
         with OBSThread.lock:
             try:
-                self.get_time()
-                self.set_time(self.remaining_time + change)
+                settings = self.cl.get_input_settings(self.inputobj['inputName'])
+                self.remaining_time = fuzzy_strtime_to_int(settings.input_settings['text'])
+                settings.input_settings['text'] = int_to_strtime(self.remaining_time + change)
+                self.cl.set_input_settings(self.inputobj['inputName'], settings.input_settings, True)
             except ValueError:
                 OBSThread.pause = True
-
-    def add_time(self, seconds: int) -> None:
-        self.update_time(seconds)
 
 
     def connect_to_obs(self) -> bool:
