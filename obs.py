@@ -16,8 +16,8 @@ source = None
 def on_scene_item_enable_state_changed(data):
     global source
 
-    if data['sceneItemId'] == source['sceneItemId']:
-        if data['sceneItemEnabled']:
+    if data.scene_item_id == source['sceneItemId']:
+        if data.scene_item_enabled:
             OBSThread.pause = False
         else:
             OBSThread.pause = True
