@@ -28,25 +28,24 @@ class OBSThread(Thread):
     ready_to_die = False
 
     def run(self) -> None:
-        with OBSThread.lock:
-            while not self.connect_to_obs():
-                print('Failed to connect to OBS. Retrying in 1 sec...')
-                sleep(1)
-                return
+        while not self.connect_to_obs():
+            print('Failed to connect to OBS. Retrying in 1 sec...')
+            sleep(1)
+            return
         
-            self.ecl.callback.register(on_scene_item_enable_state_changed)
+        self.ecl.callback.register(on_scene_item_enable_state_changed)
 
-            try:
-                current = self.get_time()
-                self.remaining_time = current
-            except Exception:
-                print('Failed to read current time, either this is the first time running or the time was invalid.')
-                settings = self.cl.get_input_settings(self.inputobj['inputName'])
-                pprint(settings.input_settings)
-                print('Ignore this if nothing broke. Resetting to default time.')
-                self.remaining_time = DEFAULT_START_TIME
+        try:
+            current = self.get_time()
+            self.remaining_time = current
+        except Exception:
+            print('Failed to read current time, either this is the first time running or the time was invalid.')
+            settings = self.cl.get_input_settings(self.inputobj['inputName'])
+            pprint(settings.input_settings)
+            print('Ignore this if nothing broke. Resetting to default time.')
+            self.remaining_time = DEFAULT_START_TIME
 
-            self.set_time(self.remaining_time)
+        self.set_time(self.remaining_time)
 
         while self.get_time() > 0:
             if self.ready_to_die:
@@ -59,12 +58,11 @@ class OBSThread(Thread):
 
 
     def __init__(self):
-        with OBSThread.lock:
-            self.cl = None
-            self.ecl = None
-            self.inputobj = None
-            self.remaining_time = 1
-            self.waiting_to_be_added = 0
+        self.cl = None
+        self.ecl = None
+        self.inputobj = None
+        self.remaining_time = 1
+        self.waiting_to_be_added = 0
         Thread.__init__(self)
 
     def __del__(self):
@@ -117,6 +115,7 @@ class OBSThread(Thread):
 
     def connect_to_obs(self) -> bool:
         global source
+
         cl = obs.ReqClient(host=OBS_HOST, port=OBS_PORT, password=OBS_WEBSOCKET_PASSWORD, timeout=3)
 
         scene = OBS_SCENE_NAME

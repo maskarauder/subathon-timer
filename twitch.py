@@ -128,5 +128,6 @@ async def setup_twitch_listener():
             print('Dying...')
             break
             
+    print('Timer dying... This is currently bugged, just close the window.')
     await eventsub.stop()
     await twitch.close()
