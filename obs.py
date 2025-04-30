@@ -9,7 +9,6 @@ from time import sleep
 from helpers import fuzzy_strtime_to_int, int_to_strtime
 from threading import Thread, Lock
 from pprint import pprint
-from obsws_python.events import SceneItemEnableStateChangedDataclass
 
 # Can't figure out how to completely remove the need for globals for the event client
 source = None
