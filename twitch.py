@@ -84,21 +84,23 @@ async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEve
 async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
     tier = data.event.tier
 
+    if tier == '1000':
+        tier = 1
+        value = TIER_1_VALUE
+    elif tier == '2000':
+        tier = 2
+        value = TIER_2_VALUE
+    elif tier == '3000':
+        tier = 3
+        value = TIER_3_VALUE
+
     if RANDOMIZER_ENABLED:
         if tier in RANDOMIZER_SUBS_SETTINGS:
             randomized_time = randint(RANDOMIZER_SUBS_SETTINGS[tier][0], RANDOMIZER_SUBS_SETTINGS[tier][1])
     else:
         randomized_time = 0
 
-    if data.event.tier == '1000':
-        tier = '1'
-        obs_thread.update_time(TIER_1_VALUE + randomized_time)
-    elif data.event.tier == '2000':
-        tier = '2'
-        obs_thread.update_time(TIER_2_VALUE + randomized_time)
-    elif data.event.tier == '3000':
-        tier = '3'
-        obs_thread.update_time(TIER_3_VALUE + randomized_time)
+    obs_thread.update_time(value + randomized_time)
         
     if not LOG_ENABLED:
         return
@@ -120,24 +122,23 @@ async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     tier = data.event.tier
     
+    if tier == '1000':
+        tier = 1
+        value = TIER_1_VALUE
+    elif tier == '2000':
+        tier = 2
+        value = TIER_2_VALUE
+    elif tier == '3000':
+        tier = 3
+        value = TIER_3_VALUE
+
     if RANDOMIZER_ENABLED:
         if tier in RANDOMIZER_SUBS_SETTINGS:
             randomized_time = randint(RANDOMIZER_SUBS_SETTINGS[tier][0], RANDOMIZER_SUBS_SETTINGS[tier][1])
     else:
         randomized_time = 0
 
-    if data.event.tier == '1000':
-        tier = '1'
-        value = TIER_1_VALUE
-        obs_thread.update_time(value + randomized_time)
-    elif data.event.tier == '2000':
-        tier = '2'
-        value = TIER_2_VALUE
-        obs_thread.update_time(value + randomized_time)
-    elif data.event.tier == '3000':
-        tier = '3'
-        value = TIER_3_VALUE
-        obs_thread.update_time(value + randomized_time)
+    obs_thread.update_time(value + randomized_time)
 
     # TODO: Maybe support multimonth subs?
     # data.event.duration_months
