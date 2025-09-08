@@ -45,7 +45,7 @@ async def callback_bits(data: ChannelBitsUseEvent) -> None:
         randomized_time = 0
 
     if nbits >= TRIGGER_BITS_VALUE:
-        value = (nbits * BITS_VALUE)
+        value = int(nbits * BITS_VALUE)
         obs_thread.update_time(value + randomized_time)
 
     else:
@@ -114,9 +114,9 @@ async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
         msg = 'new sub'
 
     if RANDOMIZER_ENABLED:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, 0, tier, msg, randomized_time])
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, randomized_time])
     else:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, 0, tier, msg])
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg])
 
 
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
@@ -151,9 +151,9 @@ async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     value = 0
 
     if RANDOMIZER_ENABLED:
-        await  write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, data.event.cumulative_months, tier, data.event.message.text, value, randomized_time])
+        await  write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value, randomized_time])
     else:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, data.event.cumulative_months, tier, data.event.message.text, value])
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value])
 
 
 # This is to track who is gifting the subs, does not interact with the timer
@@ -187,7 +187,7 @@ async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
     elif data.event.tier == '3000':
         tier = '3'
     
-    await write_to_logfile(GIFT_PACKS_LOGFILE, [login_name, public_name, nsubs, tier, randomized_time])
+    await write_to_logfile(GIFT_PACKS_LOGFILE, [str(login_name), str(public_name), nsubs, tier, randomized_time])
 
 
 async def setup_twitch_listener():

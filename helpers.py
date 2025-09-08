@@ -51,4 +51,4 @@ def int_to_strtime(input: int) -> str:
     else:
         seconds = str(seconds)
         
-    return f'{hours}:{minutes}:{seconds}'
+    return f'{hours:g}:{minutes:g}:{seconds:g}'
