@@ -114,9 +114,9 @@ async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
         msg = 'new sub'
 
     if RANDOMIZER_ENABLED:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, randomized_time])
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value, randomized_time])
     else:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg])
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value])
 
 
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
