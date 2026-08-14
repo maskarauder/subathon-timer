@@ -13,10 +13,9 @@ from helpers import fuzzy_strtime_to_int
 from config import *
 from obs import *
 from threading import Thread
-
 from os import path, makedirs
-
 from csv import writer
+from random import randint
 
 import webbrowser
 
@@ -32,8 +31,25 @@ async def callback_bits(data: ChannelBitsUseEvent) -> None:
     global obs_thread
 
     nbits = data.event.bits
+
+    if RANDOMIZER_ENABLED:
+        interval = (0, 0)
+        for key, value in RANDOMIZER_BITS_SETTINGS.items():
+            if nbits < key:
+                break
+
+            interval = value
+        
+        randomized_time = randint(interval[0], interval[1])
+    else:
+        randomized_time = 0
+
     if nbits >= TRIGGER_BITS_VALUE:
-        obs_thread.update_time(nbits * BITS_VALUE)
+        value = int(nbits * BITS_VALUE)
+        obs_thread.update_time(value + randomized_time)
+
+    else:
+        return
 
     if not LOG_ENABLED:
         return
@@ -48,8 +64,11 @@ async def callback_bits(data: ChannelBitsUseEvent) -> None:
 
     msg = data.event.message.text
 
-    await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, nbits * BITS_VALUE])
-    
+    if RANDOMIZER_ENABLED:
+        await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, value, randomized_time])
+    else:
+        await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, value])
+
 
 async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEvent) -> None:
     global obs_thread
@@ -60,49 +79,69 @@ async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEve
     
     obs_thread.update_time(CHANNELPOINTS_REWARD_VALUE)
 
-def add_sub_time(tier: str) -> None:
-    global obs_thread
-
-    match tier:
-        case '1000':
-            obs_thread.update_time(TIER_1_VALUE)
-        case '2000':
-            obs_thread.update_time(TIER_2_VALUE)
-        case '3000':
-            obs_thread.update_time(TIER_3_VALUE)
-        case _:
-            raise Exception('Twitch added some new kind of sub?')
-
 
 # This includes those new subs from Gift Subs
 async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
     tier = data.event.tier
-    add_sub_time(tier)
 
+    if tier == '1000':
+        tier = 1
+        value = TIER_1_VALUE
+    elif tier == '2000':
+        tier = 2
+        value = TIER_2_VALUE
+    elif tier == '3000':
+        tier = 3
+        value = TIER_3_VALUE
+
+    if RANDOMIZER_ENABLED:
+        if tier in RANDOMIZER_SUBS_SETTINGS:
+            randomized_time = randint(RANDOMIZER_SUBS_SETTINGS[tier][0], RANDOMIZER_SUBS_SETTINGS[tier][1])
+    else:
+        randomized_time = 0
+
+    obs_thread.update_time(value + randomized_time)
+        
     if not LOG_ENABLED:
         return
     
     login_name = data.event.user_login
     public_name = data.event.user_name
 
-    if data.event.tier == '1000':
-        tier = '1'
-    elif data.event.tier == '2000':
-        tier = '2'
-    elif data.event.tier == '3000':
-        tier = '3'
-
     if data.event.is_gift:
         msg = 'gifted'
     else:
         msg = 'new sub'
 
-    await write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, 0, tier, msg])
+    if RANDOMIZER_ENABLED:
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value, randomized_time])
+    else:
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value])
 
 
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     tier = data.event.tier
-    add_sub_time(tier)
+    
+    if tier == '1000':
+        tier = 1
+        value = TIER_1_VALUE
+    elif tier == '2000':
+        tier = 2
+        value = TIER_2_VALUE
+    elif tier == '3000':
+        tier = 3
+        value = TIER_3_VALUE
+
+    if RANDOMIZER_ENABLED:
+        if tier in RANDOMIZER_SUBS_SETTINGS:
+            randomized_time = randint(RANDOMIZER_SUBS_SETTINGS[tier][0], RANDOMIZER_SUBS_SETTINGS[tier][1])
+    else:
+        randomized_time = 0
+
+    obs_thread.update_time(value + randomized_time)
+
+    # TODO: Maybe support multimonth subs?
+    # data.event.duration_months
 
     if not LOG_ENABLED:
         return
@@ -111,19 +150,10 @@ async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     public_name = data.event.user_name
     value = 0
 
-    if data.event.tier == '1000':
-        tier = '1'
-        value = TIER_1_VALUE
-    elif data.event.tier == '2000':
-        tier = '2'
-        value = TIER_2_VALUE
-    elif data.event.tier == '3000':
-        tier = '3'
-        value = TIER_3_VALUE
-
-    # TODO: Maybe support multimonth subs?
-    # data.event.duration_months?
-    await write_to_logfile(SUBSCRIPTION_LOGFILE, [login_name, public_name, data.event.cumulative_months, tier, data.event.message.text, value])
+    if RANDOMIZER_ENABLED:
+        await  write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value, randomized_time])
+    else:
+        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value])
 
 
 # This is to track who is gifting the subs, does not interact with the timer
@@ -136,6 +166,20 @@ async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
         public_name = data.event.user_name
 
     nsubs = data.event.total
+    if RANDOMIZER_ENABLED:
+        interval = (0, 0)
+        for key, value in RANDOMIZER_BUNDLE_SETTINGS.items():
+            if nsubs < key:
+                break
+
+            interval = value
+        
+        randomized_time = randint(interval[0], interval[1])
+
+        obs_thread.update_time(randomized_time)
+    else:
+        randomized_time = 0
+
     if data.event.tier == '1000':
         tier = '1'
     elif data.event.tier == '2000':
@@ -143,7 +187,7 @@ async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
     elif data.event.tier == '3000':
         tier = '3'
     
-    await write_to_logfile(GIFT_PACKS_LOGFILE, [login_name, public_name, nsubs, tier])
+    await write_to_logfile(GIFT_PACKS_LOGFILE, [str(login_name), str(public_name), nsubs, tier, randomized_time])
 
 
 async def setup_twitch_listener():
@@ -190,11 +234,23 @@ async def setup_twitch_listener():
             makedirs(LOG_DIRECTORY)
 
         if not path.exists(path.join(LOG_DIRECTORY, SUBSCRIPTION_LOGFILE)):
-            await write_to_logfile(SUBSCRIPTION_LOGFILE, ['User login', 'Username', 'Streak', 'Tier', 'Resub message or source of new sub', 'Time added'])
+            headers = ['User login', 'Username', 'Streak', 'Tier', 'Resub message or source of new sub', 'Time added']
+
+            if RANDOMIZER_ENABLED:
+                headers.append('Random Time Delta')
+            await write_to_logfile(SUBSCRIPTION_LOGFILE, headers)
+
         if not path.exists(path.join(LOG_DIRECTORY, BITS_LOGFILE)):
-            await write_to_logfile(BITS_LOGFILE, ['User login', 'Username', 'Bits amount', 'Message', 'Time added'])
+            headers = ['User login', 'Username', 'Bits amount', 'Message', 'Time added']
+            if RANDOMIZER_ENABLED:
+                headers.append('Random Time Delta')
+            await write_to_logfile(BITS_LOGFILE, headers)
+
         if not path.exists(path.join(LOG_DIRECTORY, GIFT_PACKS_LOGFILE)):
-            await write_to_logfile(GIFT_PACKS_LOGFILE, ['User login', 'Username', '# Subs', 'Tier'])
+            headers = ['User login', 'Username', '# Subs', 'Tier']
+            if RANDOMIZER_ENABLED:
+                headers.append('Time Added (Bundle bonus only)')
+            await write_to_logfile(GIFT_PACKS_LOGFILE, headers)
 
     running = True
     while running:

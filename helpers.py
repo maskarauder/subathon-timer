@@ -37,15 +37,15 @@ def int_to_strtime(input: int) -> str:
     if (input < 0):
         return 'DONE!'
 
-    hours = str(input//3600)
+    hours = str(int(input//3600))
 
-    minutes = (input%3600)//60
+    minutes = int((input%3600)//60)
     if minutes < 10:
         minutes = '0' + str(minutes)
     else:
         minutes = str(minutes)
 
-    seconds = (input%3600)%60
+    seconds = int((input%3600)%60)
     if seconds < 10:
         seconds = '0' + str(seconds)
     else:

@@ -38,6 +38,33 @@ GIFT_PACKS_LOGFILE:str = 'gifted_subs.csv'              # The file where informa
 SUBSCRIPTION_LOGFILE:str = 'subscriptions.csv'          # The file where information on all subscriptions is stored (as well as timer interactions)
 BITS_LOGFILE:str = 'bits.csv'                           # The file where information on bits donations is stored (+ timer interactions)
 
+# Randomizer Settings
+RANDOMIZER_ENABLED:bool = True                         # Randomize the amount of time added to the clock
+RANDOMIZER_BITS_SETTINGS = dict(sorted({                # Add a random amount of seconds based on the amount of bits donated
+    100: (0, 30),                                       # Example: anything over 100 bits gets between 0 and 30s added as a bonus
+    300: (0, 60),                                       # This is the next interval, so anything over 300 bits gets between 0 and 60s added (not 90, it doesn't stack)
+    500: (0, 120),
+    1000: (0, 300),
+    5000: (0, 600),
+    10000: (0, 1200),
+}.items()))
+
+RANDOMIZER_SUBS_SETTINGS = {                            # Randomize the amount of time added for a new sub or resub
+    1: (0, 30), # Tier 1                                # NOTE: This random time gets added for EVERY sub in a gift sub bundle
+    2: (0, 60), # Tier 2
+    3: (0, 300) # Tier 3
+}
+
+# NOTE: This is in addition to the bonuses for individual subs
+RANDOMIZER_BUNDLE_SETTINGS = dict(sorted({              # Add a random amount of time for bundles of gifted subs (ignores new subs and resubs)
+    5: (0, 30),                                         # For 5 packs of subs (regardless of tier) add up to 30 additional seconds.
+    10: (0, 60),
+    20: (0, 600),
+    50: (0, 60 * 60),
+    100: (0, 60 * 60 * 5)
+}.items()))
+
+
 # Globals, don't touch this unless you know what you're doing.
 TARGET_SCOPE:List[AuthScope] = [AuthScope.BITS_READ, AuthScope.CHANNEL_READ_SUBSCRIPTIONS]
 if CHANNELPOINTS_ALLOWED:
