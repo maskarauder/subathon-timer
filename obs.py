@@ -28,9 +28,20 @@ class OBSThread(Thread):
     ready_to_die = False
 
     def run(self) -> None:
-        while not self.connect_to_obs():
-            print('Failed to connect to OBS. Retrying in 1 sec...')
-            sleep(1)
+        while not self.ready_to_die:
+            try:
+                if self.connect_to_obs():
+                    break
+            except Exception as error:
+                print(f'Failed to connect to OBS: {error}. Retrying in 1 sec...')
+            else:
+                print('Failed to connect to OBS. Retrying in 1 sec...')
+
+            if not self.ready_to_die:
+                sleep(1)
+
+        if self.ready_to_die:
+            return
         
         self.ecl.callback.register(on_scene_item_enable_state_changed)
 
@@ -62,6 +73,7 @@ class OBSThread(Thread):
         self.inputobj = None
         self.remaining_time = 1
         self.waiting_to_be_added = 0
+        self.ready_to_die = False
         Thread.__init__(self)
 
     def __del__(self):
