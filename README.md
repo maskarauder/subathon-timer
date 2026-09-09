@@ -39,6 +39,9 @@ Follow the above steps for opening a PowerShell prompt in the current directory.
 In PowerShell:  
 `python3 main.py`  
 
+## Running the tests
+`python3 -m pytest -q`
+
 ## Terminal Commands
 - integer or HH:MM:SS value -> add (or remove if negative) time from the clock
 - p -> pause the timer, it will still receive donations, just will not count down
