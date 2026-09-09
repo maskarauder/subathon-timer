@@ -17,13 +17,16 @@ def test_fuzzy_strtime_to_int_negative_time():
     assert fuzzy_strtime_to_int("-0:05") == -5
 
 def test_fuzzy_strtime_to_int_invalid_time_too_many_parts():
-    assert fuzzy_strtime_to_int("1:2:3:4") == 0
+    with pytest.raises(ValueError):
+        fuzzy_strtime_to_int("1:2:3:4")
 
 def test_fuzzy_strtime_to_int_invalid_time_non_numeric():
-    assert fuzzy_strtime_to_int("1:a:45") == 0
+    with pytest.raises(ValueError):
+        fuzzy_strtime_to_int("1:a:45")
 
 def test_fuzzy_strtime_to_int_empty_string():
-    assert fuzzy_strtime_to_int("") == 0
+    with pytest.raises(ValueError):
+        fuzzy_strtime_to_int("")
 
 def test_fuzzy_strtime_to_int_zero_seconds():
     assert fuzzy_strtime_to_int("0") == 0

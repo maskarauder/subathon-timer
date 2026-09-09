@@ -27,12 +27,11 @@ def test_update_time_success():
 
 
 def test_update_time_value_error_pauses_timer():
-    obs_thread = connected_obs_thread()
+    obs_thread = connected_obs_thread(text="not-a-time")
     OBSThread.pause = False
 
     try:
-        with patch("obs.fuzzy_strtime_to_int", side_effect=ValueError):
-            obs_thread.update_time(10)
+        obs_thread.update_time(10)
 
         obs_thread.cl.set_input_settings.assert_not_called()
         assert OBSThread.pause is True
@@ -42,7 +41,9 @@ def test_update_time_value_error_pauses_timer():
 
 def test_run_retries_obs_connection():
     obs_thread = OBSThread()
-    obs_thread.connect_to_obs = MagicMock(side_effect=[False, True])
+    obs_thread.connect_to_obs = MagicMock(
+        side_effect=[ConnectionRefusedError("OBS is offline"), True]
+    )
     obs_thread.ecl = MagicMock()
     obs_thread.get_time = MagicMock(return_value=0)
     obs_thread.set_time = MagicMock()
@@ -54,3 +55,17 @@ def test_run_retries_obs_connection():
     sleep.assert_called_once_with(1)
     obs_thread.ecl.callback.register.assert_called_once()
     obs_thread.set_time.assert_called_once_with(0)
+
+
+def test_run_can_stop_while_waiting_for_obs():
+    obs_thread = OBSThread()
+    obs_thread.connect_to_obs = MagicMock(return_value=False)
+
+    def request_stop(_seconds):
+        obs_thread.ready_to_die = True
+
+    with patch("obs.sleep", side_effect=request_stop) as sleep:
+        obs_thread.run()
+
+    obs_thread.connect_to_obs.assert_called_once_with()
+    sleep.assert_called_once_with(1)
