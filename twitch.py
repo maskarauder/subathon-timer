@@ -123,6 +123,7 @@ async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
 
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     tier = data.event.tier
+    value = 0
     
     if tier == '1000':
         tier = 1
@@ -150,7 +151,6 @@ async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
 
     login_name = data.event.user_login
     public_name = data.event.user_name
-    value = 0
 
     if RANDOMIZER_ENABLED:
         await  write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value, randomized_time])
