@@ -16,9 +16,11 @@ from threading import Thread
 from os import path, makedirs
 from csv import writer
 from random import randint
+from pathlib import Path
 
 import webbrowser
 
+TOKEN_STORAGE_PATH = Path(__file__).with_name("user_token.json")
 obs_thread = OBSThread()
 
 async def write_to_logfile(file: str, message: list):
@@ -62,7 +64,7 @@ async def callback_bits(data: ChannelBitsUseEvent) -> None:
     if not public_name:
         public_name = 'anon'
 
-    msg = data.event.message.text
+    msg = data.event.message.text if data.event.message is not None else ''
 
     if RANDOMIZER_ENABLED:
         await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, value, randomized_time])
@@ -190,6 +192,17 @@ async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
     await write_to_logfile(GIFT_PACKS_LOGFILE, [str(login_name), str(public_name), nsubs, tier, randomized_time])
 
 
+async def generate_device_tokens(twitch: Twitch, scopes):
+    """Run Device Code Flow only when stored credentials are unavailable."""
+    auth = CodeFlow(twitch, scopes)
+
+    code, url = await auth.get_code()
+    webbrowser.open(url, new=2)
+
+    print(f"Please enter code {code} in the browser to continue.")
+    return await auth.wait_for_auth_complete()
+
+
 async def setup_twitch_listener():
     global obs_thread
 
@@ -197,17 +210,15 @@ async def setup_twitch_listener():
 
     target_scope = TARGET_SCOPE
 
-    auth = CodeFlow(twitch, target_scope)
+    auth_helper = UserAuthenticationStorageHelper(
+        twitch,
+        target_scope,
+        storage_path=TOKEN_STORAGE_PATH,
+        auth_generator_func=generate_device_tokens,
+    )
 
-    code, url = await auth.get_code()
-    browser = webbrowser.get(None)
-    browser.open(url, new=2)
-
-    print(f'Please enter code {code} in the browser to continue.')
-    token, refresh_token = await auth.wait_for_auth_complete()
-
-    #add User authentication
-    await twitch.set_user_authentication(token, target_scope, refresh_token)
+    await auth_helper.bind()
+    
     user = await first(twitch.get_users(logins=[TARGET_CHANNEL]))
 
     # Start EventSub
