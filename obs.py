@@ -31,7 +31,6 @@ class OBSThread(Thread):
         while not self.connect_to_obs():
             print('Failed to connect to OBS. Retrying in 1 sec...')
             sleep(1)
-            return
         
         self.ecl.callback.register(on_scene_item_enable_state_changed)
 
