@@ -25,8 +25,7 @@ Create a Text (GDI+) Source and add it to a scene.
 Put the name of the Source into config.py as the field OBS_SCENEITEM_NAME
 
 ### Twitch:  
-Every time you run the app you will be prompted through your default browser to authorize the script to run.  
-The Device Authentication Token you will receive from Twitch is only valid for 30 days and you'll have to close the terminal and reopen it to extend the timer every 30 days, but it pulls the time from the OBS source and shouldn't take long to restart.
+The first time you run the app, your default browser will prompt you to authorize it. The tokens are stored in `user_token.json`, reused, and refreshed automatically. You will only be prompted again if the stored authorization can no longer be used or the requested scopes change. Do not share this file; it is already excluded from Git.
 
 ### Subathon Timer:  
 Modify config.py to ensure it has only valid values.  
