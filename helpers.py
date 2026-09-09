@@ -2,20 +2,21 @@
 
 # Ugly, sorry.
 # Fix if you want to.
-def fuzzy_strtime_to_int(input: str) -> int:
+def fuzzy_strtime_to_int(value: str) -> int:
+    original_value = value
     try:
-        return int(input)
+        return int(value)
     except ValueError:
         negate = False
-        if input.startswith('-'):
+        if value.startswith('-'):
             negate = True
-            input = input.lstrip('-')
+            value = value[1:]
 
-        nparam = input.count(':')
+        nparam = value.count(':')
         if nparam > 2:
-            return 0
+            raise ValueError(f'Invalid time value: {original_value!r}')
 
-        time_vals = input.split(':')
+        time_vals = value.split(':')
         time_vals.reverse()
 
         seconds = 0
@@ -25,8 +26,8 @@ def fuzzy_strtime_to_int(input: str) -> int:
                 seconds += int(time_vals[1]) * 60
             if nparam >= 2:
                 seconds += int(time_vals[2]) * 60 * 60
-        except ValueError:
-            return 0
+        except (IndexError, ValueError) as error:
+            raise ValueError(f'Invalid time value: {original_value!r}') from error
     
         if negate:
             seconds *= -1
