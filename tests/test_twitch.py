@@ -7,6 +7,13 @@ import pytest
 import twitch
 
 
+@pytest.fixture(autouse=True)
+def reset_subscription_credits(monkeypatch):
+    monkeypatch.setattr(twitch, "_subscription_credits", {})
+    monkeypatch.setattr(twitch, "_subscription_event_ids", {})
+    monkeypatch.setattr(twitch, "write_event_log", AsyncMock())
+
+
 @pytest.mark.parametrize(
     ("tier", "expected_value"),
     [
@@ -37,9 +44,9 @@ def test_new_subscriber_adds_time_for_each_tier(monkeypatch, tier, expected_valu
 
 def test_resubscriber_logs_the_calculated_value(monkeypatch):
     obs_thread = MagicMock()
-    write_to_logfile = AsyncMock()
+    write_event_log = AsyncMock()
     monkeypatch.setattr(twitch, "obs_thread", obs_thread)
-    monkeypatch.setattr(twitch, "write_to_logfile", write_to_logfile)
+    monkeypatch.setattr(twitch, "write_event_log", write_event_log)
     monkeypatch.setattr(twitch, "RANDOMIZER_ENABLED", False)
     monkeypatch.setattr(twitch, "LOG_ENABLED", True)
 
@@ -56,24 +63,15 @@ def test_resubscriber_logs_the_calculated_value(monkeypatch):
     asyncio.run(twitch.callback_resubscriber(data))
 
     obs_thread.update_time.assert_called_once_with(twitch.TIER_2_VALUE)
-    write_to_logfile.assert_awaited_once_with(
-        twitch.SUBSCRIPTION_LOGFILE,
-        [
-            "resubscriber",
-            "Resubscriber",
-            12,
-            2,
-            "Another month!",
-            twitch.TIER_2_VALUE,
-        ],
-    )
+    write_event_log.assert_awaited_once_with(
+        data, twitch.TIER_2_VALUE, "credited", twitch.TIER_2_VALUE)
 
 
 def test_bits_event_without_message_is_logged(monkeypatch):
     obs_thread = MagicMock()
-    write_to_logfile = AsyncMock()
+    write_event_log = AsyncMock()
     monkeypatch.setattr(twitch, "obs_thread", obs_thread)
-    monkeypatch.setattr(twitch, "write_to_logfile", write_to_logfile)
+    monkeypatch.setattr(twitch, "write_event_log", write_event_log)
     monkeypatch.setattr(twitch, "RANDOMIZER_ENABLED", False)
     monkeypatch.setattr(twitch, "LOG_ENABLED", True)
 
@@ -90,10 +88,7 @@ def test_bits_event_without_message_is_logged(monkeypatch):
 
     expected_value = int(100 * twitch.BITS_VALUE)
     obs_thread.update_time.assert_called_once_with(expected_value)
-    write_to_logfile.assert_awaited_once_with(
-        twitch.BITS_LOGFILE,
-        ["powerup_user", "PowerUp_User", 100, "", expected_value],
-    )
+    write_event_log.assert_awaited_once_with(data, expected_value, "credited")
 
 
 def test_generate_device_tokens(monkeypatch):

@@ -32,11 +32,9 @@ CHANELLPOINTS_REWARD_NAME:str = 'Add to Subathon'       # The case-insensitive n
 CHANNELPOINTS_REWARD_VALUE:float = 100                  # Seconds to add per channel points redemption (accepts decimal values)
 
 # Log Settings
-LOG_ENABLED:bool = True                                 # Log donations to various CSV files
+LOG_ENABLED:bool = True                                 # Log events and timer decisions to one JSONL file
 LOG_DIRECTORY:str = './logs/'                           # The folder where to store the logs (absolute paths work)
-GIFT_PACKS_LOGFILE:str = 'gifted_subs.csv'              # The file where information on who gifted subs is stored
-SUBSCRIPTION_LOGFILE:str = 'subscriptions.csv'          # The file where information on all subscriptions is stored (as well as timer interactions)
-BITS_LOGFILE:str = 'bits.csv'                           # The file where information on bits donations is stored (+ timer interactions)
+EVENTS_LOGFILE:str = 'events.jsonl'                      # One JSON object per event, including skipped duplicates
 
 # Randomizer Settings
 RANDOMIZER_ENABLED:bool = True                         # Randomize the amount of time added to the clock

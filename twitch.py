@@ -14,19 +14,76 @@ from config import *
 from obs import *
 from threading import Thread
 from os import path, makedirs
-from csv import writer
 from random import randint
 from pathlib import Path
+from datetime import datetime, timezone
+from time import monotonic
+import json
 
 import webbrowser
 
 TOKEN_STORAGE_PATH = Path(__file__).with_name("user_token.json")
 obs_thread = OBSThread()
 
-async def write_to_logfile(file: str, message: list):
-    with open(path.join(LOG_DIRECTORY, file), 'a+') as f:
-        w = writer(f)
-        w.writerow(message)
+# EventSub does not give channel.subscribe a billing-period identifier. Credit
+# immediately, then match starts/messages for 24 hours; known months take precedence.
+_subscription_credits = {}
+_subscription_event_ids = {}
+
+
+def apply_subscription_time(data, tier, value, bonus):
+    metadata = getattr(data, 'metadata', None) or {}
+    event_id = (metadata.get('message_id') if isinstance(metadata, dict)
+                else getattr(metadata, 'message_id', None))
+    if event_id and event_id in _subscription_event_ids:
+        return 0, 0, 'duplicate_event'
+
+    event = data.event
+    key = (getattr(event, 'broadcaster_user_id', TARGET_CHANNEL),
+           getattr(event, 'user_id', None) or event.user_login.lower())
+    months = getattr(event, 'cumulative_months', None)
+    now = monotonic()
+    previous = _subscription_credits.get(key)
+    if previous and months is not None and previous['months'] is not None and months < previous['months']:
+        return 0, 0, 'stale_subscription'
+    same_period = previous and (
+        (months is not None and months == previous['months']) or
+        (now - previous['at'] < 24 * 60 * 60 and
+         (months is None or previous['months'] is None)))
+    reason = 'credited'
+    record = dict(tier=tier, base=value, total=value + bonus, months=months, at=now)
+    if same_period:
+        record['months'] = months if months is not None else previous['months']
+        record['at'] = previous['at']
+        if tier <= previous['tier']:
+            record = dict(previous, months=record['months'])
+            value, bonus, reason = 0, 0, 'duplicate_subscription'
+        else:
+            delta = max(0, value + bonus - previous['total'])
+            record['total'] = max(record['total'], previous['total'])
+            value = min(max(0, value - previous['base']), delta)
+            bonus, reason = delta - value, 'tier_upgrade'
+
+    if value + bonus:
+        obs_thread.update_time(value + bonus)
+    _subscription_credits[key] = record
+    if event_id:
+        _subscription_event_ids[event_id] = None
+        if len(_subscription_event_ids) > 1024:
+            del _subscription_event_ids[next(iter(_subscription_event_ids))]
+    return value, bonus, reason
+
+
+async def write_event_log(data, timer_delta, reason, requested=None):
+    if not LOG_ENABLED:
+        return
+    makedirs(LOG_DIRECTORY, exist_ok=True)
+    record = dict(received_at=datetime.now(timezone.utc).isoformat(),
+                  timer_delta_seconds=timer_delta, reason=reason,
+                  requested_seconds=timer_delta if requested is None else requested,
+                  payload=data.to_dict())
+    with open(path.join(LOG_DIRECTORY, EVENTS_LOGFILE), 'a', encoding='utf-8') as f:
+        f.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')
 
 
 async def callback_bits(data: ChannelBitsUseEvent) -> None:
@@ -49,27 +106,10 @@ async def callback_bits(data: ChannelBitsUseEvent) -> None:
     if nbits >= TRIGGER_BITS_VALUE:
         value = int(nbits * BITS_VALUE)
         obs_thread.update_time(value + randomized_time)
+        await write_event_log(data, value + randomized_time, 'credited')
 
     else:
         return
-
-    if not LOG_ENABLED:
-        return
-    
-    user_login = data.event.user_login
-    public_name = data.event.user_name
-
-    if not user_login:
-        user_login = 'anon'
-    if not public_name:
-        public_name = 'anon'
-
-    msg = data.event.message.text if data.event.message is not None else ''
-
-    if RANDOMIZER_ENABLED:
-        await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, value, randomized_time])
-    else:
-        await write_to_logfile(BITS_LOGFILE, [user_login, public_name, nbits, msg, value])
 
 
 async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEvent) -> None:
@@ -80,6 +120,7 @@ async def callback_channelpoints(data: ChannelPointsCustomRewardRedemptionAddEve
         return
     
     obs_thread.update_time(CHANNELPOINTS_REWARD_VALUE)
+    await write_event_log(data, CHANNELPOINTS_REWARD_VALUE, 'credited')
 
 
 # This includes those new subs from Gift Subs
@@ -102,23 +143,9 @@ async def callback_new_subscriber(data: ChannelSubscribeEvent) -> None:
     else:
         randomized_time = 0
 
-    obs_thread.update_time(value + randomized_time)
-        
-    if not LOG_ENABLED:
-        return
-    
-    login_name = data.event.user_login
-    public_name = data.event.user_name
-
-    if data.event.is_gift:
-        msg = 'gifted'
-    else:
-        msg = 'new sub'
-
-    if RANDOMIZER_ENABLED:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value, randomized_time])
-    else:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), 0, tier, msg, value])
+    requested = value + randomized_time
+    value, randomized_time, reason = apply_subscription_time(data, tier, value, randomized_time)
+    await write_event_log(data, value + randomized_time, reason, requested)
 
 
 async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
@@ -141,32 +168,16 @@ async def callback_resubscriber(data: ChannelSubscriptionMessageEvent) -> None:
     else:
         randomized_time = 0
 
-    obs_thread.update_time(value + randomized_time)
+    requested = value + randomized_time
+    value, randomized_time, reason = apply_subscription_time(data, tier, value, randomized_time)
+    await write_event_log(data, value + randomized_time, reason, requested)
 
     # TODO: Maybe support multimonth subs?
     # data.event.duration_months
 
-    if not LOG_ENABLED:
-        return
 
-    login_name = data.event.user_login
-    public_name = data.event.user_name
-
-    if RANDOMIZER_ENABLED:
-        await  write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value, randomized_time])
-    else:
-        await write_to_logfile(SUBSCRIPTION_LOGFILE, [str(login_name), str(public_name), data.event.cumulative_months, tier, data.event.message.text, value])
-
-
-# This is to track who is gifting the subs, does not interact with the timer
+# Track the gifter and add only the configured bundle bonus here.
 async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
-    if data.event.is_anonymous:
-        login_name = 'anon'
-        public_name = 'anon'
-    else:
-        login_name = data.event.user_login
-        public_name = data.event.user_name
-
     nsubs = data.event.total
     if RANDOMIZER_ENABLED:
         interval = (0, 0)
@@ -182,14 +193,7 @@ async def callback_somebody_gifted(data: ChannelSubscriptionGiftEvent) -> None:
     else:
         randomized_time = 0
 
-    if data.event.tier == '1000':
-        tier = '1'
-    elif data.event.tier == '2000':
-        tier = '2'
-    elif data.event.tier == '3000':
-        tier = '3'
-    
-    await write_to_logfile(GIFT_PACKS_LOGFILE, [str(login_name), str(public_name), nsubs, tier, randomized_time])
+    await write_event_log(data, randomized_time, 'gift_bundle_bonus')
 
 
 async def generate_device_tokens(twitch: Twitch, scopes):
@@ -240,28 +244,6 @@ async def setup_twitch_listener():
     if LOG_ENABLED:
         if AuthScope.CHANNEL_READ_SUBSCRIPTIONS in target_scope:
             await eventsub.listen_channel_subscription_gift(user.id, callback_somebody_gifted)
-
-        if not path.exists(LOG_DIRECTORY):
-            makedirs(LOG_DIRECTORY)
-
-        if not path.exists(path.join(LOG_DIRECTORY, SUBSCRIPTION_LOGFILE)):
-            headers = ['User login', 'Username', 'Streak', 'Tier', 'Resub message or source of new sub', 'Time added']
-
-            if RANDOMIZER_ENABLED:
-                headers.append('Random Time Delta')
-            await write_to_logfile(SUBSCRIPTION_LOGFILE, headers)
-
-        if not path.exists(path.join(LOG_DIRECTORY, BITS_LOGFILE)):
-            headers = ['User login', 'Username', 'Bits amount', 'Message', 'Time added']
-            if RANDOMIZER_ENABLED:
-                headers.append('Random Time Delta')
-            await write_to_logfile(BITS_LOGFILE, headers)
-
-        if not path.exists(path.join(LOG_DIRECTORY, GIFT_PACKS_LOGFILE)):
-            headers = ['User login', 'Username', '# Subs', 'Tier']
-            if RANDOMIZER_ENABLED:
-                headers.append('Time Added (Bundle bonus only)')
-            await write_to_logfile(GIFT_PACKS_LOGFILE, headers)
 
     running = True
     while running:
