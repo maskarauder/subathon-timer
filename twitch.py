@@ -10,6 +10,7 @@ from uuid import UUID
 
 # App Specific
 from helpers import fuzzy_strtime_to_int
+from log_export import export_csv_logs
 from config import *
 from obs import *
 from threading import Thread
@@ -248,7 +249,7 @@ async def setup_twitch_listener():
     running = True
     while running:
         try:
-            user_input = input('Enter time or seconds to adjust time (p=pause, r=resume, q=quit, s=set exact):')
+            user_input = input('Enter time or seconds to adjust time (p=pause, r=resume, e=export CSV, q=quit, s=set exact):')
             match user_input:
                 case 'p':
                     obs_thread.pause = True
@@ -257,6 +258,16 @@ async def setup_twitch_listener():
                         obs_thread = OBSThread()
                         obs_thread.start()
                     obs_thread.pause = False
+                case 'e' | 'export':
+                    try:
+                        directory, counts, skipped = export_csv_logs(path.join(LOG_DIRECTORY, EVENTS_LOGFILE))
+                        print(f'CSV export saved to {directory.resolve()}')
+                        for filename, count in counts.items():
+                            print(f'  {filename}: {count} rows')
+                        if skipped:
+                            print(f'Skipped malformed/incomplete records on log lines: {skipped}')
+                    except (OSError, UnicodeError) as error:
+                        print(f'Could not export logs: {error}')
                 case 'q':
                     obs_thread.ready_to_die = True
                     obs_thread.join()
