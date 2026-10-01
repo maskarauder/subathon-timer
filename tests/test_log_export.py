@@ -122,7 +122,8 @@ class LogExportTests(unittest.TestCase):
                         UserAuthenticationStorageHelper=MagicMock(return_value=MagicMock(bind=AsyncMock())),
                         first=AsyncMock(return_value=SimpleNamespace(id='channel')),
                         EventSubWebsocket=MagicMock(return_value=socket), obs_thread=obs,
-                        TARGET_SCOPE=[], LOG_DIRECTORY=str(self.directory), EVENTS_LOGFILE=self.source.name)
+                        TARGET_SCOPE=[], LOG_DIRECTORY=str(self.directory), EVENTS_LOGFILE=self.source.name,
+                        write_startup_log=MagicMock())
         settings.update(extra)
         with patch.multiple(twitch, **settings), patch('builtins.input', side_effect=commands), \
                 patch('builtins.print') as printed:
@@ -144,6 +145,22 @@ class LogExportTests(unittest.TestCase):
         obs.update_time.assert_called_once_with(123)
         self.assertFalse((self.directory / 'exports').exists())
         self.assertTrue(any('Could not export logs:' in str(c) for c in printed.call_args_list))
+
+    def test_startup_records_are_not_timer_events_and_export_retains_run_ids(self):
+        event = self.record('channel.subscribe', tier='1000')
+        event['run_id'] = 'second-run'
+        self.write(
+            dict(record_type='startup', run_id='first-run', config=dict(TIER_1_VALUE=500)),
+            self.record('channel.subscribe', tier='1000'),
+            dict(record_type='startup', run_id='second-run', config=dict(TIER_1_VALUE=750)),
+            event,
+        )
+        directory, counts, skipped = export_csv_logs(self.source)
+        self.assertEqual(skipped, [])
+        self.assertEqual(counts['events.csv'], 2)
+        rows = self.read_csv(directory, 'subscriptions.csv')
+        self.assertEqual([r['log_line'] for r in rows], ['2', '4'])
+        self.assertEqual([r['run_id'] for r in rows], ['', 'second-run'])
 
 
 if __name__ == '__main__':

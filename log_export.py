@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 COMMON_COLUMNS = (
-    'log_line', 'received_at', 'message_timestamp', 'event_type', 'message_id',
+    'log_line', 'received_at', 'run_id', 'message_timestamp', 'event_type', 'message_id',
     'subscription_id', 'user_id', 'user_login', 'user_name', 'broadcaster_user_id',
     'reason', 'timer_delta_seconds', 'requested_seconds',
 )
@@ -62,6 +62,9 @@ def export_csv_logs(jsonl_path):
         except (json.JSONDecodeError, UnicodeError):
             skipped.append(line_number)
             continue
+        # Configuration snapshots stay in JSONL; CSV reports contain timer events.
+        if _field(record, 'record_type') == 'startup':
+            continue
         if not isinstance(_field(record, 'payload', 'event'), dict):
             skipped.append(line_number)
             continue
@@ -71,6 +74,7 @@ def export_csv_logs(jsonl_path):
                set(SUB_COLUMNS + GIFT_COLUMNS + BITS_COLUMNS + POINTS_COLUMNS)}
         row.update(
             log_line=line_number, received_at=_field(record, 'received_at'),
+            run_id=_field(record, 'run_id'),
             message_timestamp=_field(record, 'payload', 'metadata', 'message_timestamp'),
             event_type=(_field(record, 'payload', 'subscription', 'type') or
                         _field(record, 'payload', 'metadata', 'subscription_type')),

@@ -6,7 +6,7 @@ from twitchAPI.oauth import CodeFlow, UserAuthenticationStorageHelper
 from twitchAPI.helper import first
 from twitchAPI.object.eventsub import ChannelBitsUseEvent, ChannelSubscribeEvent, ChannelSubscriptionGiftEvent, ChannelSubscriptionMessageEvent, ChannelPointsCustomRewardRedemptionAddEvent
 from twitchAPI.eventsub.websocket import EventSubWebsocket
-from uuid import UUID
+from uuid import uuid4
 
 # App Specific
 from helpers import fuzzy_strtime_to_int
@@ -25,6 +25,14 @@ import webbrowser
 
 TOKEN_STORAGE_PATH = Path(__file__).with_name("user_token.json")
 obs_thread = OBSThread()
+_LOG_RUN_ID = str(uuid4())
+# Allowlist only timer rules and public channel/reward names; never copy config wholesale.
+_PUBLIC_CONFIG_FIELDS = (
+    'TARGET_CHANNEL', 'DEFAULT_START_TIME', 'TRIGGER_BITS_VALUE', 'BITS_VALUE',
+    'TIER_1_VALUE', 'TIER_2_VALUE', 'TIER_3_VALUE', 'CHANNELPOINTS_ALLOWED',
+    'CHANELLPOINTS_REWARD_NAME', 'CHANNELPOINTS_REWARD_VALUE', 'RANDOMIZER_ENABLED',
+    'RANDOMIZER_BITS_SETTINGS', 'RANDOMIZER_SUBS_SETTINGS', 'RANDOMIZER_BUNDLE_SETTINGS',
+)
 
 # EventSub does not give channel.subscribe a billing-period identifier. Credit
 # immediately, then match starts/messages for 24 hours; known months take precedence.
@@ -75,16 +83,31 @@ def apply_subscription_time(data, tier, value, bonus):
     return value, bonus, reason
 
 
-async def write_event_log(data, timer_delta, reason, requested=None):
+def _write_log_record(record):
     if not LOG_ENABLED:
         return
     makedirs(LOG_DIRECTORY, exist_ok=True)
     record = dict(received_at=datetime.now(timezone.utc).isoformat(),
-                  timer_delta_seconds=timer_delta, reason=reason,
-                  requested_seconds=timer_delta if requested is None else requested,
-                  payload=data.to_dict())
+                  run_id=_LOG_RUN_ID, **record)
     with open(path.join(LOG_DIRECTORY, EVENTS_LOGFILE), 'a', encoding='utf-8') as f:
         f.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')
+
+
+def write_startup_log():
+    if not LOG_ENABLED:
+        return
+    settings = {name: globals()[name] for name in _PUBLIC_CONFIG_FIELDS}
+    settings['TARGET_SCOPE'] = [scope.name for scope in TARGET_SCOPE]
+    _write_log_record(dict(record_type='startup', config=settings))
+
+
+async def write_event_log(data, timer_delta, reason, requested=None):
+    if not LOG_ENABLED:
+        return
+    _write_log_record(dict(record_type='event', timer_delta_seconds=timer_delta,
+                           reason=reason,
+                           requested_seconds=timer_delta if requested is None else requested,
+                           payload=data.to_dict()))
 
 
 async def callback_bits(data: ChannelBitsUseEvent) -> None:
@@ -211,6 +234,7 @@ async def generate_device_tokens(twitch: Twitch, scopes):
 async def setup_twitch_listener():
     global obs_thread
 
+    write_startup_log()
     twitch = await Twitch(APP_TOKEN, None, authenticate_app=False)
 
     target_scope = TARGET_SCOPE
