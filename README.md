@@ -1,8 +1,17 @@
 # Twitch Subathon Timer in Python  
 
 ## Getting Started  
+### Open a terminal
+[Download source as a ZIP](./archive/refs/heads/main.zip)
+Unzip the source
+Right click the folder where you unzipped this project without selecting a file.  
+Click "Open in terminal" from the presented options.  
+![Open in Terminal option](./images/terminal-option.png)
+
+
 ### uv
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (`winget install --id astral-sh.uv -e` on Windows), then reopen your terminal in the project folder.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+One windows you can use the command `winget install --id astral-sh.uv -e` in the terminal that's open.  
 `uv` manages Python, dependencies, and the virtual environment automatically.
 
 ### OBS:  
