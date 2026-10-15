@@ -1,0 +1,14 @@
+[project]
+name = "subathon-timer"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "obsws-python",
+    "twitchAPI>=4.5.0",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false

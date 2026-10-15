@@ -1,19 +1,9 @@
 # Twitch Subathon Timer in Python  
 
 ## Getting Started  
-### Python  
-Open a PowerShell windows and type the python3 command.  
-If you have python3 installed, it should drop you into a python3 interpreter. Type "quit()" to exit and proceed to the next section.  
-
-Otherwise, it should open the Windows store. Press install to install the latest version of python3.  
-
-Install python dependencies:  
-Right click the folder where you unzipped this project without selecting a file.  
-Click "Open in terminal" from the presented options.  
-![Open in Terminal option](./images/terminal-option.png)  
-
-In the terminal, type the following command:  
-`python3 -m pip install -r requirements.txt`
+### uv
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (`winget install --id astral-sh.uv -e` on Windows), then reopen your terminal in the project folder.
+`uv` manages Python, dependencies, and the virtual environment automatically.
 
 ### OBS:  
 Tools -> WebSocket Server Settings -> Enable WebSocket Server  
@@ -31,15 +21,11 @@ The first time you run the app, your default browser will prompt you to authoriz
 Modify config.py to ensure it has only valid values.  
 App Token is specific to this app and should remain the same.  
 
-## Running the app  
-Running the app is simple provided the config file is valid.  
-
-Follow the above steps for opening a PowerShell prompt in the current directory.  
-In PowerShell:  
-`python3 main.py`  
+## Running the app
+`uv run main.py`
 
 ## Running the tests
-`python3 -m pytest -q`
+`uv run pytest -q`
 
 ## Terminal Commands
 - integer or HH:MM:SS value -> add (or remove if negative) time from the clock
