@@ -9,8 +9,8 @@ Click "Open in terminal" from the presented options.
 ![Open in Terminal option](./images/terminal-option.png)
 
 ### uv
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
-One windows you can use the command `winget install --id astral-sh.uv -e` in the terminal that's open.  
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)  
+On windows you can use the command `winget install --id astral-sh.uv -e` in the terminal that's open.  
 `uv` manages Python, dependencies, and the virtual environment automatically.
 
 ### OBS:  
