@@ -1,23 +1,15 @@
 # Twitch Subathon Timer in Python  
 
 ## Getting Started  
-### Windows download
-Download `SubathonTimer-Windows.zip` from a successful [Actions build](https://github.com/maskarauder/subathon-timer/actions/workflows/build-windows.yml), extract it, edit `config.py` using the OBS/Twitch settings below, and run `SubathonTimer.exe`. No Python or uv required; skip the source setup below.
-Keep the folder writable: saved login tokens and relative log paths stay beside the app. When updating, keep your existing `config.py`, `user_token.json`, and logs.
+### Quickstart
+Download `SubathonTimer-Windows.zip` from a successful [Actions build](https://github.com/maskarauder/subathon-timer/actions/workflows/build-windows.yml)  
+Extract it  
+Edit `config.py` using the OBS/Twitch settings below  
+Double-click `SubathonTimer.exe`  
+Keep the folder writable: saved login tokens and relative log paths stay beside the app.  
+When updating, you can keep your existing `config.py`, `user_token.json`, and logs.
 
-### Open a terminal
-[Download source as a ZIP](./archive/refs/heads/main.zip)  
-Unzip the source  
-Right click the folder where you unzipped this project without selecting a file.  
-Click "Open in terminal" from the presented options.  
-![Open in Terminal option](./images/terminal-option.png)
-
-### uv
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/)  
-On windows you can use the command `winget install --id astral-sh.uv -e` in the terminal that's open.  
-`uv` manages Python, dependencies, and the virtual environment automatically.
-
-### OBS:  
+## OBS:  
 Tools -> WebSocket Server Settings -> Enable WebSocket Server  
 Tools -> WebSocket Server Settings -> Enable authentication  
 Tools -> WebSocket Server Settings -> Show Connect Info  
@@ -26,12 +18,21 @@ Copy the password to config.py into the field OBS_WEBSOCKET_PASSWORD
 Create a Text (GDI+) Source and add it to a scene.  
 Put the name of the Source into config.py as the field OBS_SCENEITEM_NAME
 
-### Twitch:  
+## Twitch:  
 The first time you run the app, your default browser will prompt you to authorize it. The tokens are stored in `user_token.json`, reused, and refreshed automatically. You will only be prompted again if the stored authorization can no longer be used or the requested scopes change. Do not share this file; it is already excluded from Git.
 
-### Subathon Timer:  
-Modify config.py to ensure it has only valid values.  
-App Token is specific to this app and should remain the same.  
+## Terminal Commands
+- integer or HH:MM:SS value -> add (or remove if negative) time from the clock
+- p -> pause the timer, it will still receive donations, just will not count down
+- r -> resume the timer or restart from DEFAULT_START_TIME if timer hits 0 or the text is no longer able to be read
+- q -> quit the timer, kill the Twitch and OBS connections and let the app die gracefully
+- s -> set the timer to an exact time, there will be a follow on prompt to input seconds or HH:MM:SS times  
+
+## Working with the project
+### uv
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)  
+On windows you can use the command `winget install --id astral-sh.uv -e` in the terminal that's open.  
+`uv` manages Python, dependencies, and the virtual environment automatically.
 
 ## Running the app
 `uv run main.py`
@@ -41,13 +42,6 @@ App Token is specific to this app and should remain the same.
 
 ## Building a download
 `uv run --locked --group build python build.py` creates a ZIP in `dist/` for the current OS. Build Windows executables on Windows; use a clean `config.py` before sharing the ZIP.
-
-## Terminal Commands
-- integer or HH:MM:SS value -> add (or remove if negative) time from the clock
-- p -> pause the timer, it will still receive donations, just will not count down
-- r -> resume the timer or restart from DEFAULT_START_TIME if timer hits 0 or the text is no longer able to be read
-- q -> quit the timer, kill the Twitch and OBS connections and let the app die gracefully
-- s -> set the timer to an exact time, there will be a follow on prompt to input seconds or HH:MM:SS times  
 
 ## How it works  
 ### Twitch Thread
