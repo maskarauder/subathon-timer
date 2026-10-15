@@ -8,6 +8,7 @@ dependencies = [
 ]
 
 [dependency-groups]
+build = ["pyinstaller>=6.22.3,<7"]
 dev = ["pytest"]
 
 [tool.uv]

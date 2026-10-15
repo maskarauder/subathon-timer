@@ -9,21 +9,20 @@ from twitchAPI.eventsub.websocket import EventSubWebsocket
 from uuid import uuid4
 
 # App Specific
+from app_paths import data_path
 from helpers import fuzzy_strtime_to_int
 from log_export import export_csv_logs
 from config import *
 from obs import *
 from threading import Thread
-from os import path, makedirs
 from random import randint
-from pathlib import Path
 from datetime import datetime, timezone
 from time import monotonic
 import json
 
 import webbrowser
 
-TOKEN_STORAGE_PATH = Path(__file__).with_name("user_token.json")
+TOKEN_STORAGE_PATH = data_path("user_token.json")
 obs_thread = OBSThread()
 _LOG_RUN_ID = str(uuid4())
 # Allowlist only timer rules and public channel/reward names; never copy config wholesale.
@@ -86,10 +85,11 @@ def apply_subscription_time(data, tier, value, bonus):
 def _write_log_record(record):
     if not LOG_ENABLED:
         return
-    makedirs(LOG_DIRECTORY, exist_ok=True)
+    directory = data_path(LOG_DIRECTORY)
+    directory.mkdir(parents=True, exist_ok=True)
     record = dict(received_at=datetime.now(timezone.utc).isoformat(),
                   run_id=_LOG_RUN_ID, **record)
-    with open(path.join(LOG_DIRECTORY, EVENTS_LOGFILE), 'a', encoding='utf-8') as f:
+    with (directory / EVENTS_LOGFILE).open('a', encoding='utf-8') as f:
         f.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')
 
 
@@ -284,7 +284,7 @@ async def setup_twitch_listener():
                     obs_thread.pause = False
                 case 'e' | 'export':
                     try:
-                        directory, counts, skipped = export_csv_logs(path.join(LOG_DIRECTORY, EVENTS_LOGFILE))
+                        directory, counts, skipped = export_csv_logs(data_path(LOG_DIRECTORY) / EVENTS_LOGFILE)
                         print(f'CSV export saved to {directory.resolve()}')
                         for filename, count in counts.items():
                             print(f'  {filename}: {count} rows')

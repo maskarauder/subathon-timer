@@ -1,6 +1,10 @@
 # Twitch Subathon Timer in Python  
 
 ## Getting Started  
+### Windows download
+Download `SubathonTimer-Windows.zip` from a successful [Actions build](https://github.com/maskarauder/subathon-timer/actions/workflows/build-windows.yml), extract it, edit `config.py` using the OBS/Twitch settings below, and run `SubathonTimer.exe`. No Python or uv required; skip the source setup below.
+Keep the folder writable: saved login tokens and relative log paths stay beside the app. When updating, keep your existing `config.py`, `user_token.json`, and logs.
+
 ### Open a terminal
 [Download source as a ZIP](./archive/refs/heads/main.zip)  
 Unzip the source  
@@ -34,6 +38,9 @@ App Token is specific to this app and should remain the same.
 
 ## Running the tests
 `uv run pytest -q`
+
+## Building a download
+`uv run --locked --group build python build.py` creates a ZIP in `dist/` for the current OS. Build Windows executables on Windows; use a clean `config.py` before sharing the ZIP.
 
 ## Terminal Commands
 - integer or HH:MM:SS value -> add (or remove if negative) time from the clock
