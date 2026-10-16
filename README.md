@@ -2,7 +2,7 @@
 
 ## Getting Started  
 ### Quickstart
-Download `SubathonTimer-Windows.zip` from a successful [Release](/releases/download/v1.0.0/SubathonTimer-Windows.zip)  
+Download `SubathonTimer-Windows.zip` from a successful [Release](https://github.com/maskarauder/subathon-timer/releases/latest/download/SubathonTimer-Windows.zip)
 Extract it  
 Edit `config.py` using the OBS/Twitch settings below  
 Double-click `SubathonTimer.exe`  
