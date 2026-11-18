@@ -1,5 +1,7 @@
 # Twitch Subathon Timer in Python  
 
+**[Setup Guide & Command Reference](https://maskarauder.com/subathon-timer/)** · **[Latest Windows Release](https://github.com/maskarauder/subathon-timer/releases/tag/v1.0.0)** · **[More Stream & Audio Tools](https://maskarauder.com/)**
+
 ## Getting Started  
 ### Quickstart
 Download `SubathonTimer-Windows.zip` from a successful [Release](https://github.com/maskarauder/subathon-timer/releases/latest/download/SubathonTimer-Windows.zip)  
